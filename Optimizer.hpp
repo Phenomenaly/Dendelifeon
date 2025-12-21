@@ -16,10 +16,11 @@ struct Genome {
 class Mutation {
 public:
     static void apply(Genome& g, std::mt19937& rng, int stag) {
-        bool target_hit = (g.mana >= Dandelifeon::MANA_CAP);
+        // Мы считаем, что попали в цель, если мана в пределах +- 2.5% от капа
+        bool target_hit = (g.mana >= Dandelifeon::MANA_CAP * 0.975 && g.mana <= Dandelifeon::MANA_CAP * 1.025);
         int mx = (g.symmetryType == 0) ? 24 : 11;
-        
-        if (target_hit && (rng() % 2 == 0) && g.activeCount > 3) {
+
+        if (target_hit && (rng() % 100 < 40) && g.activeCount > 3) {
             int idx = rng() % g.activeCount;
             g.points[idx] = g.points[g.activeCount - 1];
             g.activeCount--;
@@ -27,7 +28,7 @@ public:
         }
 
         int mode = rng() % 100;
-        if (stag > 5000 || mode < 10) {
+        if (stag > 5000 || mode < 12) {
             int dx = (rng() % 3) - 1, dy = (rng() % 3) - 1;
             for (int i = 0; i < g.activeCount; i++) {
                 g.points[i].x = std::clamp(g.points[i].x + dx, 0, mx);
@@ -38,7 +39,6 @@ public:
             g.points[i].x = std::clamp(g.points[i].x + (int)(rng() % 3 - 1), 0, mx);
             g.points[i].y = std::clamp(g.points[i].y + (int)(rng() % 3 - 1), 0, 24);
         }
-        
         if (rng() % 100 < 5 && g.activeCount < 24) {
             g.points[g.activeCount++] = { (int)(rng() % (mx + 1)), (int)(rng() % 25) };
         }
@@ -51,7 +51,6 @@ public:
         Dandelifeon::Board b1, b2;
         b1.clear();
         gen.initialTotal = Symmetry::apply(b1, gen.symmetryType, gen.points, gen.activeCount);
-
         Dandelifeon::Board* c = &b1, * n = &b2;
         gen.mana = 0; gen.fitness = -1e18;
 
@@ -60,14 +59,20 @@ public:
             int inC = Dandelifeon::step(*c, *n, wipe);
             if (wipe) {
                 gen.tick = t;
-                gen.mana = (long)inC * t * Dandelifeon::MANA_PER_GEN;
-                long capped = (gen.mana > Dandelifeon::MANA_CAP) ? Dandelifeon::MANA_CAP : gen.mana;
-                
-                if (capped >= Dandelifeon::MANA_CAP) {
+                long rawMana = (long)inC * t * Dandelifeon::MANA_PER_GEN;
+                gen.mana = rawMana;
+
+                // ПРОВЕРКА НА ПЕРЕПОЛНЕНИЕ (Буфер + 2.5%)
+                if (rawMana > Dandelifeon::MANA_CAP * 1.025) {
+                    gen.fitness = -1e9; // Штраф за бесполезную избыточность
+                } 
+                else if (rawMana >= Dandelifeon::MANA_CAP * 0.975) {
+                    // ИДЕАЛЬНАЯ ЗОНА: Режим экстремальной экономии
                     gen.fitness = 2000000.0 + (100 - gen.initialTotal) * 1000.0;
-                } else {
-                    double ageBonus = (t >= Dandelifeon::MAX_TICKS * 0.85) ? 10000.0 : 0.0;
-                    gen.fitness = (double)capped + ageBonus - (gen.initialTotal * 5.0);
+                }
+                else {
+                    // ЗОНА РОСТА: Чем ближе к капу, тем лучше
+                    gen.fitness = (double)rawMana - (gen.initialTotal * 2.0);
                 }
                 return;
             }
@@ -97,4 +102,5 @@ public:
         }
     }
 };
+
 
