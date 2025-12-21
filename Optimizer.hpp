@@ -28,17 +28,37 @@ public:
         f << "Blocks per Minute: " << std::fixed << std::setprecision(1) << bpm << "\n";
         f << "--------------------------\n";
 
-        Dandelifeon::Board b;
-        b.clear();
+        Dandelifeon::Board b; b.clear();
         Symmetry::apply(b, gen.symmetryType, gen.points, gen.activeCount);
-
         for (int y = 1; y <= 25; ++y) {
-            for (int x = 1; x <= 25; ++x) {
-                f << (b.g[y][x] ? "C " : ". ");
-            }
+            for (int x = 1; x <= 25; ++x) f << (b.g[y][x] ? "C " : ". ");
             f << "\n";
         }
         f.close();
+    }
+};
+
+class BoardEngine {
+public:
+    static void evaluate(Genome& gen) {
+        Dandelifeon::Board b1, b2; b1.clear();
+        gen.initialTotal = Symmetry::apply(b1, gen.symmetryType, gen.points, gen.activeCount);
+
+        Dandelifeon::Board* c = &b1, * n = &b2;
+        for (int t = 1; t <= Dandelifeon::MAX_TICKS; ++t) {
+            bool wipe;
+            int inC = Dandelifeon::step(*c, *n, wipe);
+            if (wipe) {
+                gen.tick = t;
+                gen.mana = (long)inC * t * Dandelifeon::MANA_PER_GEN;
+                long capped = std::min(Dandelifeon::MANA_CAP, gen.mana);
+                if (capped >= Dandelifeon::MANA_CAP) gen.fitness = 1e9 + (100 - gen.initialTotal) * 1000.0;
+                else gen.fitness = std::pow((double)capped, 2.0) / 1000.0 - (gen.initialTotal * 5.0);
+                return;
+            }
+            std::swap(c, n);
+        }
+        gen.fitness = -1e12;
     }
 };
 
@@ -65,30 +85,5 @@ public:
             g.points[i].x = std::clamp(g.points[i].x + (int)(rng() % (d * 2 + 1) - d), 0, mx);
             g.points[i].y = std::clamp(g.points[i].y + (int)(rng() % (d * 2 + 1) - d), 0, my);
         }
-    }
-};
-
-class BoardEngine {
-public:
-    static void evaluate(Genome& gen) {
-        Dandelifeon::Board b1, b2;
-        b1.clear();
-        gen.initialTotal = Symmetry::apply(b1, gen.symmetryType, gen.points, gen.activeCount);
-
-        Dandelifeon::Board* c = &b1, * n = &b2;
-        for (int t = 1; t <= Dandelifeon::MAX_TICKS; ++t) {
-            bool wipe;
-            int inC = Dandelifeon::step(*c, *n, wipe);
-            if (wipe) {
-                gen.tick = t;
-                gen.mana = (long)inC * t * 150;
-                long capped = std::min(Dandelifeon::MANA_CAP, gen.mana);
-                if (capped >= Dandelifeon::MANA_CAP) gen.fitness = 1e9 + (100 - gen.initialTotal) * 1000.0;
-                else gen.fitness = std::pow((double)capped, 2.0) / 1000.0 - (gen.initialTotal * 5.0);
-                return;
-            }
-            std::swap(c, n);
-        }
-        gen.fitness = -1e12;
     }
 };
