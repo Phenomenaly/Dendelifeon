@@ -16,12 +16,11 @@ struct Genome {
 class Mutation {
 public:
     static void apply(Genome& g, std::mt19937& rng, int stag) {
-        bool on_plateau = (g.mana >= Dandelifeon::MANA_CAP);
-        int t = g.symmetryType;
-        int mx = (t == 0) ? 24 : 11;
-        int my = 24;
-
-        if (on_plateau && rng() % 100 < 35 && g.activeCount > 3) {
+        bool target_hit = (g.mana >= Dandelifeon::MANA_CAP);
+        int mx = (g.symmetryType == 0) ? 24 : 11;
+        
+        // Если мана в капе - ШАНС 50% НА УДАЛЕНИЕ БЛОКА
+        if (target_hit && (rng() % 2 == 0) && g.activeCount > 3) {
             int idx = rng() % g.activeCount;
             g.points[idx] = g.points[g.activeCount - 1];
             g.activeCount--;
@@ -29,33 +28,22 @@ public:
         }
 
         int mode = rng() % 100;
-        if (stag > 8000 || mode < 20) {
-            int subMode = rng() % 3;
-            if (subMode == 0) {
-                int dx = (rng() % 3) - 1, dy = (rng() % 3) - 1;
-                for (int i = 0; i < g.activeCount; i++) {
-                    g.points[i].x = std::clamp(g.points[i].x + dx, 0, mx);
-                    g.points[i].y = std::clamp(g.points[i].y + dy, 0, my);
-                }
-            } else if (subMode == 1) {
-                for (int i = 0; i < g.activeCount; i++) {
-                    if (rng() % 2) g.points[i].x = mx - g.points[i].x;
-                    if (rng() % 2) g.points[i].y = my - g.points[i].y;
-                }
-            } else {
-                if (g.activeCount < 24) {
-                    int pIdx = rng() % g.activeCount;
-                    g.points[g.activeCount++] = {
-                        std::clamp(g.points[pIdx].x + (int)(rng()%5-2), 0, mx),
-                        std::clamp(g.points[pIdx].y + (int)(rng()%5-2), 0, my)
-                    };
-                }
+        // При застое - сдвиг всей системы (очень эффективно для асимметрии)
+        if (stag > 5000 || mode < 10) {
+            int dx = (rng() % 3) - 1, dy = (rng() % 3) - 1;
+            for (int i = 0; i < g.activeCount; i++) {
+                g.points[i].x = std::clamp(g.points[i].x + dx, 0, mx);
+                g.points[i].y = std::clamp(g.points[i].y + dy, 0, 24);
             }
-        } 
-        else {
+        } else {
             int i = rng() % g.activeCount;
             g.points[i].x = std::clamp(g.points[i].x + (int)(rng() % 3 - 1), 0, mx);
-            g.points[i].y = std::clamp(g.points[i].y + (int)(rng() % 3 - 1), 0, my);
+            g.points[i].y = std::clamp(g.points[i].y + (int)(rng() % 3 - 1), 0, 24);
+        }
+        
+        // Редкое добавление блока для экспансии
+        if (rng() % 100 < 5 && g.activeCount < 24) {
+            g.points[g.activeCount++] = { (int)(rng() % (mx + 1)), (int)(rng() % 25) };
         }
     }
 };
@@ -76,26 +64,25 @@ public:
             if (wipe) {
                 gen.tick = t;
                 gen.mana = (long)inC * t * Dandelifeon::MANA_PER_GEN;
-                long capped = std::min(Dandelifeon::MANA_CAP, gen.mana);
+                long capped = (gen.mana > Dandelifeon::MANA_CAP) ? Dandelifeon::MANA_CAP : gen.mana;
                 
                 if (capped >= Dandelifeon::MANA_CAP) {
-                    gen.fitness = 1000000.0 + (100.0 - gen.initialTotal) * 1000.0;
+                    // РЕЖИМ ЖЕСТКОЙ ЭКОНОМИИ (Mana = 2M + сэкономленные блоки * 1000)
+                    gen.fitness = 2000000.0 + (100 - gen.initialTotal) * 1000.0;
                 } else {
-                    gen.fitness = (double)capped;
-                    if (t >= (Dandelifeon::MAX_TICKS * 0.85)) {
-                        gen.fitness += 25000.0; 
-                    }
+                    // РЕЖИМ РОСТА (Линейная мана + бонус за 85% возраста)
+                    double ageBonus = (t >= Dandelifeon::MAX_TICKS * 0.85) ? 10000.0 : 0.0;
+                    gen.fitness = (double)capped + ageBonus - (gen.initialTotal * 5.0);
                 }
                 return;
             }
             std::swap(c, n);
-            if (t % 20 == 0) {
+            if (t % 25 == 0) {
                 bool any = false;
                 for(int i=1; i<=25; i++) if(*(uint64_t*)&c->g[i][1] || c->g[i][25]) { any=true; break; }
                 if(!any) return;
             }
         }
-        gen.fitness = (double)Dandelifeon::MAX_TICKS;
     }
 };
 
@@ -105,19 +92,13 @@ public:
         std::ofstream f("current_leader.txt");
         if (!f.is_open()) return;
         double bpm = (gen.initialTotal * 120.0) / (gen.tick ? gen.tick : 1);
-        f << "Strategy: " << Symmetry::getName(gen.symmetryType) << "\n"
-          << "Mana: " << gen.mana << "\n"
-          << "Initial Blocks: " << gen.initialTotal << "\n"
-          << "Last Tick: " << gen.tick << "\n"
-          << "Blocks per Minute: " << std::fixed << std::setprecision(1) << bpm << "\n"
-          << "--------------------------\n";
+        f << "Strategy: " << Symmetry::getName(gen.symmetryType) << "\nMana: " << gen.mana 
+          << "\nBlocks: " << gen.initialTotal << "\nTick: " << gen.tick << "\nBPM: " << bpm << "\n---\n";
         Dandelifeon::Board b; b.clear();
         Symmetry::apply(b, gen.symmetryType, gen.points, gen.activeCount);
         for (int y = 1; y <= 25; ++y) {
             for (int x = 1; x <= 25; ++x) f << (b.g[y][x] ? "C " : ". ");
             f << "\n";
         }
-        f.close();
     }
 };
-
