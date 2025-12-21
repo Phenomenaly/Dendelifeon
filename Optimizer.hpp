@@ -16,14 +16,12 @@ struct Genome {
 class Mutation {
 public:
     static void apply(Genome& g, std::mt19937& rng, int stag) {
-        bool on_plateau = (g.mana >= Dandelifeon::MANA_CAP * 0.95);
+        bool on_plateau = (g.mana >= Dandelifeon::MANA_CAP);
         int t = g.symmetryType;
-        // Границы: 0 - ASYM (24x24), остальные - Половины (11x24)
         int mx = (t == 0) ? 24 : 11;
         int my = 24;
 
-        // 1. ДЕЦИМАЦИЯ (Если результат хороший - режем блоки)
-        if (on_plateau && rng() % 100 < 30 && g.activeCount > 3) {
+        if (on_plateau && rng() % 100 < 35 && g.activeCount > 3) {
             int idx = rng() % g.activeCount;
             g.points[idx] = g.points[g.activeCount - 1];
             g.activeCount--;
@@ -31,21 +29,20 @@ public:
         }
 
         int mode = rng() % 100;
-        
-        // 2. ТЯЖЕЛАЯ МУТАЦИЯ (Сдвиги и Инверсии при застое)
-        if (stag > 10000 || mode < 15) {
+        if (stag > 8000 || mode < 20) {
             int subMode = rng() % 3;
-            if (subMode == 0) { // Сдвиг всей системы
+            if (subMode == 0) {
                 int dx = (rng() % 3) - 1, dy = (rng() % 3) - 1;
                 for (int i = 0; i < g.activeCount; i++) {
                     g.points[i].x = std::clamp(g.points[i].x + dx, 0, mx);
                     g.points[i].y = std::clamp(g.points[i].y + dy, 0, my);
                 }
-            } else if (subMode == 1) { // Локальное зеркало (Инверсия)
+            } else if (subMode == 1) {
                 for (int i = 0; i < g.activeCount; i++) {
                     if (rng() % 2) g.points[i].x = mx - g.points[i].x;
+                    if (rng() % 2) g.points[i].y = my - g.points[i].y;
                 }
-            } else { // Добавление новой точки рядом с существующей
+            } else {
                 if (g.activeCount < 24) {
                     int pIdx = rng() % g.activeCount;
                     g.points[g.activeCount++] = {
@@ -55,8 +52,7 @@ public:
                 }
             }
         } 
-        else { 
-            // 3. ОБЫЧНЫЙ ДРЕЙФ
+        else {
             int i = rng() % g.activeCount;
             g.points[i].x = std::clamp(g.points[i].x + (int)(rng() % 3 - 1), 0, mx);
             g.points[i].y = std::clamp(g.points[i].y + (int)(rng() % 3 - 1), 0, my);
@@ -83,21 +79,23 @@ public:
                 long capped = std::min(Dandelifeon::MANA_CAP, gen.mana);
                 
                 if (capped >= Dandelifeon::MANA_CAP) {
-                    // Фитнес для Экономии
-                    gen.fitness = 1e9 + (100 - gen.initialTotal) * 1000.0 + (gen.mana - capped);
+                    gen.fitness = 1000000.0 + (100.0 - gen.initialTotal) * 1000.0;
                 } else {
-                    // Фитнес для Роста (Кубическая зависимость от маны)
-                    gen.fitness = std::pow((double)capped, 3.0) / 1e6 - (gen.initialTotal * 10.0);
+                    gen.fitness = (double)capped;
+                    if (t >= (Dandelifeon::MAX_TICKS * 0.85)) {
+                        gen.fitness += 25000.0; 
+                    }
                 }
                 return;
             }
             std::swap(c, n);
-            if (t % 20 == 0) { // Проверка на смерть
+            if (t % 20 == 0) {
                 bool any = false;
                 for(int i=1; i<=25; i++) if(*(uint64_t*)&c->g[i][1] || c->g[i][25]) { any=true; break; }
                 if(!any) return;
             }
         }
+        gen.fitness = (double)Dandelifeon::MAX_TICKS;
     }
 };
 
@@ -122,3 +120,4 @@ public:
         f.close();
     }
 };
+
