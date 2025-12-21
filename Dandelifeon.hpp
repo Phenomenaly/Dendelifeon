@@ -4,8 +4,8 @@
 namespace Dandelifeon {
     const int S = 25;
     const int PS = 27; 
-    inline int MAX_TICKS = 100;
-    inline int MANA_PER_GEN = 60;
+    inline int MAX_TICKS = 60;
+    inline int MANA_PER_GEN = 150;
     inline long MANA_CAP = 50400;
 
     struct Point { int x, y; };
@@ -28,3 +28,4 @@ namespace Dandelifeon {
         return inC;
     }
 }
+
