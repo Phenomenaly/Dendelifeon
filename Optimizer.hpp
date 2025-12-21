@@ -19,7 +19,6 @@ public:
         bool target_hit = (g.mana >= Dandelifeon::MANA_CAP);
         int mx = (g.symmetryType == 0) ? 24 : 11;
         
-        // Если мана в капе - ШАНС 50% НА УДАЛЕНИЕ БЛОКА
         if (target_hit && (rng() % 2 == 0) && g.activeCount > 3) {
             int idx = rng() % g.activeCount;
             g.points[idx] = g.points[g.activeCount - 1];
@@ -28,7 +27,6 @@ public:
         }
 
         int mode = rng() % 100;
-        // При застое - сдвиг всей системы (очень эффективно для асимметрии)
         if (stag > 5000 || mode < 10) {
             int dx = (rng() % 3) - 1, dy = (rng() % 3) - 1;
             for (int i = 0; i < g.activeCount; i++) {
@@ -41,7 +39,6 @@ public:
             g.points[i].y = std::clamp(g.points[i].y + (int)(rng() % 3 - 1), 0, 24);
         }
         
-        // Редкое добавление блока для экспансии
         if (rng() % 100 < 5 && g.activeCount < 24) {
             g.points[g.activeCount++] = { (int)(rng() % (mx + 1)), (int)(rng() % 25) };
         }
@@ -67,10 +64,8 @@ public:
                 long capped = (gen.mana > Dandelifeon::MANA_CAP) ? Dandelifeon::MANA_CAP : gen.mana;
                 
                 if (capped >= Dandelifeon::MANA_CAP) {
-                    // РЕЖИМ ЖЕСТКОЙ ЭКОНОМИИ (Mana = 2M + сэкономленные блоки * 1000)
                     gen.fitness = 2000000.0 + (100 - gen.initialTotal) * 1000.0;
                 } else {
-                    // РЕЖИМ РОСТА (Линейная мана + бонус за 85% возраста)
                     double ageBonus = (t >= Dandelifeon::MAX_TICKS * 0.85) ? 10000.0 : 0.0;
                     gen.fitness = (double)capped + ageBonus - (gen.initialTotal * 5.0);
                 }
@@ -102,3 +97,4 @@ public:
         }
     }
 };
+
