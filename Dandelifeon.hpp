@@ -4,8 +4,10 @@
 namespace Dandelifeon {
     const int S = 25;
     const int PS = 27;
-    const int MAX_TICKS = 60;
-    const long MANA_CAP = 50000;
+
+    inline int MAX_TICKS = 60;
+    inline int MANA_PER_GEN = 150;
+    inline long MANA_CAP = 50000;
 
     struct Point { int x, y; };
 
@@ -19,8 +21,8 @@ namespace Dandelifeon {
         for (int y = 1; y <= 25; ++y) {
             unsigned char* rC = curr.g[y], * rU = curr.g[y - 1], * rD = curr.g[y + 1], * rN = next.g[y];
             for (int x = 1; x <= 25; ++x) {
-                int neighbors = rU[x - 1] + rU[x] + rU[x + 1] + rC[x - 1] + rC[x + 1] + rD[x - 1] + rD[x] + rD[x + 1];
-                unsigned char live = (neighbors == 3) | (rC[x] & (neighbors == 2));
+                int n = rU[x - 1] + rU[x] + rU[x + 1] + rC[x - 1] + rC[x + 1] + rD[x - 1] + rD[x] + rD[x + 1];
+                unsigned char live = (n == 3) | (rC[x] & (n == 2));
                 rN[x] = live;
                 if (live && x >= 12 && x <= 14 && y >= 12 && y <= 14) { wipe = true; inC++; }
             }
