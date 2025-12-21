@@ -94,7 +94,7 @@ void evolutionTask(int id, int sym) {
 void startCustomOptimization(int maxTicks, int manaPerTick, long manaCap, const std::vector<SymType>& strategies) {
     Dandelifeon::MAX_TICKS = maxTicks;
     Dandelifeon::MANA_PER_GEN = manaPerTick;
-    Dandelifeon::MANA_CAP = manaCap;
+    Dandelifeon::MANA_CAP = 6LL * maxTicks * manaPerTick;
     int n = (int)strategies.size();
     g_thread_bests.assign(n, 0);
     g_thread_blocks.assign(n, 999);
@@ -116,3 +116,4 @@ int main() {
         HMX, HMX });
     return 0;
 }
+
