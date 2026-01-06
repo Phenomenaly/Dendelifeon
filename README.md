@@ -1,47 +1,38 @@
-# Dandelifeon Optimizer (AVX2 Edition)
+# Dandelifeon Optimizer
 
-A hyper-optimized, multi-threaded evolutionary engine designed to solve the **Dandelifeon** flower puzzle from *Botania*. Now powered by AVX2 intrinsics and a novel asymmetric evolutionary strategy.
+A C++ implementation of a genetic algorithm designed to maximize mana generation for the Dandelifeon flower (Botania mod). The solver focuses on finding optimal Game of Life patterns within a 25x25 bounded grid.
 
----
+## Technical Implementation
 
-## ⚡ Key Innovations
+### Core Engine
+The simulation logic uses **AVX2 intrinsics** to perform bitwise operations on the grid state. The board is represented as bitmasks, allowing the engine to calculate generations using SIMD instructions without conditional branching overhead.
 
-### 1. Bitwise AVX2 Engine
-The simulation core has been rewritten from scratch using **AVX2 intrinsics**.
-- Operates directly on bit representations of the grid.
-- Processes generations orders of magnitude faster than standard implementations.
-- Zero-overhead state checks.
+### Optimization Strategy
+Unlike previous iterations that enforced global symmetry, this version allows for **global asymmetry**. The algorithm prioritizes local substructures that may be symmetric, but places them freely on the board to maximize efficiency.
 
-### 2. Asymmetric Evolution Strategy
-Unlike traditional solvers that enforce global symmetry (which restricts the solution space), this engine allows for **Global Asymmetry with Local Sub-structures**.
-- The solver is free to break symmetry to squeeze extra mana efficiency.
-- Supports finding "chaotic" high-efficiency patterns that human designers miss.
+### Diversity Control (2D Leaderboard)
+To avoid local optima convergence, the population is sorted into a two-dimensional lookup table based on:
+1.  **X-Axis:** Cell Density (Compactness of the pattern).
+2.  **Y-Axis:** Distance from Center (Average Manhattan distance of cells from the 3x3 absorption zone).
 
-### 3. 2D Diversity Leaderboard
-To prevent the genetic algorithm from getting stuck in local optima, the engine utilizes a **2D Leaderboard** system based on two axes:
-1.  **X: Cell Density** (Pattern compactness)
-2.  **Y: Distance form Center** (Average cell distance from the 3x3 absorption zone)
+**Multithreading Logic:** Each thread is assigned a unique evolutionary vector, targeting specific regions of the density/distance map. This ensures simultaneous exploration of both dense clusters and sparse, long-range patterns.
 
-Each thread pursues a **unique evolutionary vector**, targeting specific areas of this 2D map. This ensures the algorithm explores both "dense, close-range" bursts and "sparse, long-range" methuselahs simultaneously.
-
----
-
-## 🧬 Mutation Logic
-The engine employs a specific set of mutations designed to manipulate the grid structure without destroying viable clusters:
-- **Shift Field:** Moves the entire pattern.
-- **Shift Structure:** Moves connected components independently.
-- **Shift Cell:** Micro-adjustments to individual cells.
-- **Mirror Structure:** Locally reflects a cluster (without forcing global symmetry).
-- **Delete Cell:** Pruning for efficiency.
+### Mutations
+The genetic algorithm modifies candidates using the following operations:
+*   **Shift Field:** Translates the entire active grid.
+*   **Shift Structure:** Identifies and moves connected components (islands) independently.
+*   **Shift Cell:** Moves individual active bits.
+*   **Mirror Structure:** Reflects a connected component locally (does not affect the rest of the board).
+*   **Delete Cell:** Toggles an active bit to zero.
 
 ---
 
-## Botania Rules Recap
-Targeting the specific mechanics of the Dandelifeon:
-1.  **Grid:** 25x25 Board.
-2.  **Zone:** 3x3 Center (Absorption Zone).
-3.  **Scoring:** $Mana = Cells \times Age \times 150$.
-4.  **Constraint:** Maximum absorption rate is mathematically limited, but the goal is to maximize total mana per setup.
+## Dandelifeon Constraints
+The solver adheres to specific Botania mechanics:
+*   **Grid:** 25x25 cells.
+*   **Absorption:** Cells entering the center 3x3 area are consumed.
+*   **Scoring:** $Mana = Cells \times Age \times 150$.
+*   **Aging:** New cells inherit the age of their oldest neighbor + 1.
 
 ---
 
