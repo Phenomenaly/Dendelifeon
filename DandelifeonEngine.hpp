@@ -118,27 +118,22 @@ namespace Dandelifeon {
                            __popcnt((*nxt)[13] & center_mask) + 
                            __popcnt((*nxt)[14] & center_mask);
 
-                    res.mana = (std::min)(mana_cap, (long)center_cells * t * mana_per_gen);
-                    res.ticks = t;
-                    res.success = true;
-                    double score_cells = center_cells * 100'000'000.0;
-
+                    double multiplier = 0,5;
+                    if (center_cells) multiplaer = 1
+                    if (center_cells = 6) multiplier = 2.0; 
+    
                     int neighbor_cells = 0;
                     uint32_t ring_mask = (1 << 10) | (1 << 11) | (1 << 12) | (1 << 13) | (1 << 14); 
-    
                     for(int y_n = 11; y_n <= 15; ++y_n) {
                         uint32_t row = (*nxt)[y_n] & ring_mask;
-                        if (y_n >= 12 && y_n <= 14) {
-                            row &= ~center_mask;
-                        }
+                        if (y_n >= 12 && y_n <= 14) row &= ~center_mask;
                         neighbor_cells += __popcnt(row);
                     }
-                    double score_neighbors = neighbor_cells * 1'000'000.0;
-                    double score_mana = (double)res.mana;
-                    double penalty_size = res.initial_blocks * 1000.0;
 
-                    res.fitness = score_cells + score_neighbors + score_mana - penalty_size;
+                    res.fitness = ((double)res.mana * multiplier) + (t * 50.0);
     
+                    res.fitness += (neighbor_cells * 10.0);
+
                     return res;
                 }
 
@@ -158,3 +153,4 @@ namespace Dandelifeon {
     };
 
 }
+
