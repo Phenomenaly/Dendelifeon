@@ -63,6 +63,7 @@ namespace Dandelifeon {
                 g_thread_blocks[id].store(res.initial_blocks);
 
                 if (res.fitness > 10.0) {
+                    engine.getPhenotype(next_gen.toBitboard(), res.pheno_x, res.pheno_y);
                     archive.submit(current_gen, res);
                 }
             }
@@ -78,4 +79,5 @@ namespace Dandelifeon {
             }
         }
     }
+
 }
