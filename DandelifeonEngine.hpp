@@ -112,28 +112,17 @@ namespace Dandelifeon {
                 step_avx2(*curr, *nxt);
 
                 uint32_t hits = ((*nxt)[12] | (*nxt)[13] | (*nxt)[14]) & center_mask;
-                
                 if (hits) {
-                    int center_cells = __popcnt((*nxt)[12] & center_mask) + 
-                           __popcnt((*nxt)[13] & center_mask) + 
-                           __popcnt((*nxt)[14] & center_mask);
-
-                    double multiplier = 0,5;
-                    if (center_cells) multiplaer = 1
-                    if (center_cells = 6) multiplier = 2.0; 
-    
-                    int neighbor_cells = 0;
-                    uint32_t ring_mask = (1 << 10) | (1 << 11) | (1 << 12) | (1 << 13) | (1 << 14); 
-                    for(int y_n = 11; y_n <= 15; ++y_n) {
-                        uint32_t row = (*nxt)[y_n] & ring_mask;
-                        if (y_n >= 12 && y_n <= 14) row &= ~center_mask;
-                        neighbor_cells += __popcnt(row);
-                    }
-
-                    res.fitness = ((double)res.mana * multiplier) + (t * 50.0);
-    
-                    res.fitness += (neighbor_cells * 10.0);
-
+                    int cells = __popcnt((*nxt)[12] & center_mask) + __popcnt((*nxt)[13] & center_mask) + __popcnt((*nxt)[14] & center_mask);
+                    res.mana = (std::min)(mana_cap, (long)cells * t * mana_per_gen);
+                    res.ticks = t;
+                    res.success = true;
+                    if (res.mana >= 36000)
+                        res.fitness = 1000000.0 + (100 - res.initial_blocks) * 1000.0;
+                    else 
+                        res.fitness = (double)res.mana + (t * 50.0);
+                        // It's actually worth counting the number of last cells, 
+                        // since 6 cells give more mana starting from the 30th tick of the game
                     return res;
                 }
 
@@ -151,6 +140,4 @@ namespace Dandelifeon {
             return res;
         }
     };
-
 }
-
