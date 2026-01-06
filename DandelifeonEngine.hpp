@@ -114,15 +114,18 @@ namespace Dandelifeon {
                 uint32_t hits = ((*nxt)[12] | (*nxt)[13] | (*nxt)[14]) & center_mask;
                 if (hits) {
                     int cells = __popcnt((*nxt)[12] & center_mask) + __popcnt((*nxt)[13] & center_mask) + __popcnt((*nxt)[14] & center_mask);
+                    
                     res.mana = (std::min)(mana_cap, (long)cells * t * mana_per_gen);
                     res.ticks = t;
                     res.success = true;
-                    if (res.mana >= 36000)
-                        res.fitness = 1000000.0 + (100 - res.initial_blocks) * 1000.0;
-                    else 
-                        res.fitness = (double)res.mana + (t * 50.0);
-                        // It's actually worth counting the number of last cells, 
-                        // since 6 cells give more mana starting from the 30th tick of the game
+
+                    // More then 4 blocks have way more value
+                    double multiplier = 0.5;
+                    if (cells > 3) multiplier = 1.0;
+                    if (cells > 4) multiplier = 2.0;
+
+                    res.fitness = (double)res.mana * multiplier + t * 50;
+                    
                     return res;
                 }
 
@@ -141,3 +144,4 @@ namespace Dandelifeon {
         }
     };
 }
+
