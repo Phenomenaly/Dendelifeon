@@ -18,12 +18,14 @@ namespace Dandelifeon {
         Genome current_gen;
 
         // 3 structures with 8 cells each, should be moved to separate variables
+        // Also better use 2 structure with 3-5 blocks
         for (int i = 0; i < 3; i++) {
             Structure s;
             s.x = 8 + rng() % 10;
             s.y = 8 + rng() % 10;
 
-            for (int j = 0; j < 8; j++) 
+            // Better use 3 + rng() % 3 there
+            for (int j = 0; j < 8; j++)
                 s.addPoint(j % 3, j / 3);
 
             current_gen.organs[current_gen.organCount++] = s;
@@ -81,3 +83,4 @@ namespace Dandelifeon {
     }
 
 }
+
