@@ -12,6 +12,8 @@ namespace Dandelifeon {
         Structure organs[5];
         int8_t organCount = 0;
 
+        bool symmetric = false;
+
         std::array<double, 6> mutationWeights;
         int lastMutationType = -1;
 
@@ -57,10 +59,16 @@ namespace Dandelifeon {
                     if (realX >= 0 && realX < 25 && realY >= 0 && realY < 25)
                         b.data[realY + 1] |= (1 << realX);
 
+                    if (symmetric) {
+                        int symX = 24 - realX;
+                        int symY = 24 - realY;
+                        b.data[symY + 1] |= (1 << symX);
+                    }
                 }
             }
 
             return b;
         }
     };
+
 }
