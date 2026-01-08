@@ -120,8 +120,11 @@ namespace Dandelifeon {
             }
             out_gen.organCount = cell.genome.organCount;
 
+            out_gen.symmetric = cell.genome.symmetric;
+
             cell.usage_count++;
             return true;
         }
     };
+
 }
