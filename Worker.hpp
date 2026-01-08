@@ -62,7 +62,7 @@ namespace Dandelifeon {
             auto res = engine.run(next_layers.first, next_layers.second);
 
             if (res.fitness > best_res.fitness) {
-                engine.run(next_layers.first, next_layers.second, res, footprint);
+                engine.run(next_layers.first, next_layers.second, footprint);
 
                 current_gen = next_gen;
                 best_res = res;
@@ -81,7 +81,7 @@ namespace Dandelifeon {
             if (stagnation > 200'000'000) {
                 if (archive.getElite(current_gen, rng)) {
                     auto elite_layers = current_gen.toBitboards();
-                    engine.run(elite_layers.first, elite_layers.second, best_res, footprint);
+                    engine.run(elite_layers.first, elite_layers.second, footprint);
                     last_improvement = local_iters;
                 }
                 else {
@@ -93,3 +93,4 @@ namespace Dandelifeon {
     }
 
 }
+
