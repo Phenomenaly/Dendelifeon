@@ -10,6 +10,7 @@ namespace Dandelifeon {
         int8_t x, y;
         RelativePoint cells[10];
         int8_t count = 0;
+        bool isObstacle = false;
 
         Structure() : x(12), y(12), count(0) {}
 
@@ -36,4 +37,5 @@ namespace Dandelifeon {
             }
         }
     };
+
 }
