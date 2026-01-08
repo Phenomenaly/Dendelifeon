@@ -14,24 +14,25 @@ namespace Dandelifeon {
 
         bool symmetric = false;
 
-        std::array<double, 6> mutationWeights;
+        std::array<double, 7> mutationWeights;
         int lastMutationType = -1;
 
         Genome() {
-            mutationWeights.fill(1.0 / 6.0);
+            mutationWeights.fill(1.0 / 7.0);
             organCount = 0;
+            symmetric = false
         }
 
         int selectMutation(std::mt19937& rng) {
             std::uniform_real_distribution<double> dist(0.0, 1.0);
             double r = dist(rng);
             double cumulative = 0;
-            for (int i = 0; i < 6; ++i) {
+            for (int i = 0; i < 7; ++i) {
                 cumulative += mutationWeights[i];
                 if (r <= cumulative) 
                     return i;
             }
-            return 5;
+            return 6;
         }
 
         void rewardLastMutation() {
@@ -72,3 +73,4 @@ namespace Dandelifeon {
     };
 
 }
+
