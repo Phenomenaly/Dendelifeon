@@ -7,7 +7,7 @@
 namespace Dandelifeon {
     class EvolutionManager {
     public:
-        static void mutate(Genome& gen, std::mt19937& rng) {
+        static void mutate(Genome& gen, std::mt19937& rng, const Bitboard& footprint) {
             if (gen.organCount == 0) {
                 forceAddStructure(gen, rng);
                 return;
@@ -85,6 +85,28 @@ namespace Dandelifeon {
             break;
             }
 
+            case 7: // Add one obstacles
+            {
+            if (gen.organCount >= 5) break;
+
+            for(int k=0; k<20; ++k) {
+                int ty = 1 + rng() % 25;
+                if (footprint.data[ty] == 0) continue; 
+                
+                int tx = rng() % 25;
+                if (footprint.data[ty] & (1 << tx)) {
+                    Structure obs;
+                    obs.x = tx; obs.y = ty - 1;
+                    obs.isObstacle = true;
+                    obs.addPoint(0, 0);
+                    
+                    gen.organs[gen.organCount++] = obs;
+                    break;
+                }
+            }
+        }
+        break;
+
             if (gen.organCount < 2) forceAddStructure(gen, rng);
         }
 
@@ -102,3 +124,4 @@ namespace Dandelifeon {
     };
 
 }
+
