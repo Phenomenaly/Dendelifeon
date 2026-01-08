@@ -102,9 +102,11 @@ namespace Dandelifeon {
             y_out = sum_dist / count_structs;
         }
 
-        SimulationResult run(const Bitboard& start_board, const Bitboard& obstacles) const {
+        SimulationResult run(const Bitboard& start_board, const Bitboard& obstacles, Bitboard& out_footprint) const {
             SimulationResult res;
             res.initial_blocks = 0;
+            out_footprint.clear();
+            
             for (int i = 1; i <= 25; ++i) 
                 res.initial_blocks += __popcnt(start_board.data[i]);
 
@@ -141,6 +143,8 @@ namespace Dandelifeon {
                         double dist_score = 25.0 - std::abs(y - 13);
                         best_proximity = (std::max)(best_proximity, dist_score + (t * 0.1));
                     }
+
+                    out_footprint.data[k] |= nxt->data[k];
                 }
 
                 std::swap(curr, nxt);
@@ -151,5 +155,6 @@ namespace Dandelifeon {
         }
     };
 }
+
 
 
