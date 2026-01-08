@@ -49,28 +49,37 @@ namespace Dandelifeon {
                 w /= sum;
         }
 
-        Bitboard toBitboard() const {
-            Bitboard b; b.clear();
+        std::pair<Bitboard, Bitboard> toBitboards() const {
+            Bitboard cells; cells.clear();
+            Bitboard obs;   obs.clear();
+
             for (int i = 0; i < organCount; ++i) {
                 const auto& org = organs[i];
                 for (int j = 0; j < org.count; ++j) {
                     int realX = org.x + org.cells[j].dx;
                     int realY = org.y + org.cells[j].dy;
 
-                    if (realX >= 0 && realX < 25 && realY >= 0 && realY < 25)
-                        b.data[realY + 1] |= (1 << realX);
-
-                    if (symmetric) {
-                        int symX = 24 - realX;
-                        int symY = 24 - realY;
-                        b.data[symY + 1] |= (1 << symX);
+                    if (realX >= 0 && realX < 25 && realY >= 0 && realY < 25) {
+                        uint32_t bit = (1 << realX);
+                        if (org.isObstacle) {
+                            obs.data[realY + 1] |= bit;
+                            if (symmetric) {
+                                obs.data[(24 - realY) + 1] |= (1 << (24 - realX));
+                            }
+                        } 
+                        else {
+                            cells.data[realY + 1] |= bit;
+                            if (symmetric) {
+                                cells.data[(24 - realY) + 1] |= (1 << (24 - realX));
+                            }
+                        }
                     }
                 }
             }
-
-            return b;
+            return { cells, obs };
         }
     };
 
 }
+
 
