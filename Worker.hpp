@@ -12,11 +12,6 @@ inline std::unique_ptr<std::atomic<long>[]> g_thread_mana;
 inline std::unique_ptr<std::atomic<int>[]> g_thread_blocks;
 inline std::atomic<uint64_t> g_total_iters{ 0 };
 
-code
-Code
-download
-content_copy
-expand_less
 void workerTask(int id, Archive& archive, const Engine& engine) {
     std::mt19937 rng(std::random_device{}() + id);
     Genome current_gen;
@@ -90,3 +85,4 @@ void workerTask(int id, Archive& archive, const Engine& engine) {
 }
 
 }
+
