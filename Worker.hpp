@@ -17,9 +17,11 @@ namespace Dandelifeon {
         std::mt19937 rng(std::random_device{}() + id);
         Genome current_gen;
 
+        current_gen.symmetric = (rng() % 2 == 0);
+
         // 3 structures with 8 cells each, should be moved to separate variables
         // Also better use 2 structure with 3-5 blocks
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 2; i++) {
             Structure s;
             s.x = 8 + rng() % 10;
             s.y = 8 + rng() % 10;
@@ -83,4 +85,5 @@ namespace Dandelifeon {
     }
 
 }
+
 
