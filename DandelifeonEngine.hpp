@@ -47,15 +47,18 @@ namespace Dandelifeon {
         }
 
         // Pure black magic of bitwise operations and overtaking several lines at once
-        inline void step_avx2(const Bitboard& current, Bitboard& next) const {
+        inline void step_avx2(const Bitboard& current, const Bitboard& obstacles, Bitboard& next) const {
             for (int i = 1; i <= 25; i += 8) {
                 __m256i mid = _mm256_loadu_si256((const __m256i*) & current.data[i]);
                 __m256i top = _mm256_loadu_si256((const __m256i*) & current.data[i - 1]);
                 __m256i bot = _mm256_loadu_si256((const __m256i*) & current.data[i + 1]);
 
-                __m256i n1 = _mm256_slli_epi32(top, 1);  __m256i n2 = top; __m256i n3 = _mm256_srli_epi32(top, 1);
-                __m256i n4 = _mm256_slli_epi32(mid, 1);                   __m256i n5 = _mm256_srli_epi32(mid, 1);
-                __m256i n6 = _mm256_slli_epi32(bot, 1);  __m256i n7 = bot; __m256i n8 = _mm256_srli_epi32(bot, 1);
+                __m256i n1 = _mm256_slli_epi32(top, 1);  
+                __m256i n2 = top; __m256i n3 = _mm256_srli_epi32(top, 1);
+                __m256i n4 = _mm256_slli_epi32(mid, 1);                   
+                __m256i n5 = _mm256_srli_epi32(mid, 1);
+                __m256i n6 = _mm256_slli_epi32(bot, 1);  
+                __m256i n7 = bot; __m256i n8 = _mm256_srli_epi32(bot, 1);
 
                 __m256i s0 = _mm256_setzero_si256(), s1 = _mm256_setzero_si256(), s2 = _mm256_setzero_si256();
 
@@ -67,6 +70,10 @@ namespace Dandelifeon {
                 add(n1); add(n2); add(n3); add(n4); add(n5); add(n6); add(n7); add(n8);
 
                 __m256i res = _mm256_and_si256(_mm256_andnot_si256(s2, s1), _mm256_or_si256(s0, mid));
+
+                __m256i obs = _mm256_loadu_si256((const __m256i*) & obstacles.data[i]);
+                res = _mm256_andnot_si256(obs, res);
+                
                 _mm256_storeu_si256((__m256i*) & next.data[i], _mm256_and_si256(res, row_mask));
             }
         }
@@ -95,7 +102,7 @@ namespace Dandelifeon {
             y_out = sum_dist / count_structs;
         }
 
-        SimulationResult run(const Bitboard& start_board) const {
+        SimulationResult run(const Bitboard& start_board, const Bitboard& obstacles) const {
             SimulationResult res;
             res.initial_blocks = 0;
             for (int i = 1; i <= 25; ++i) 
@@ -109,7 +116,7 @@ namespace Dandelifeon {
 
             for (int t = 1; t <= max_ticks; ++t) {
                 nxt->clear();
-                step_avx2(*curr, *nxt);
+                step_avx2(*curr, obstacles, *nxt);
 
                 uint32_t hits = ((*nxt)[12] | (*nxt)[13] | (*nxt)[14]) & center_mask;
                 if (hits) {
@@ -144,4 +151,5 @@ namespace Dandelifeon {
         }
     };
 }
+
 
