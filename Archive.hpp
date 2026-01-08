@@ -42,10 +42,18 @@ namespace Dandelifeon {
             f << "Phenotype Y (Distance): " << res.pheno_y << "\n";
             f << "-----------------------------------\n";
 
-            Bitboard b = gen.toBitboard();
+            auto b = gen.toBitboard();
+            const Bitboard& cells = b.first;
+            const Bitboard& obstacles = b.second;
+            
             for (int y = 1; y <= 25; ++y) {
                 for (int x = 1; x <= 25; ++x) {
-                    f << (b.data[y] & (1 << (x - 1)) ? "C " : ". ");
+                    bool is_cell = (cells.data[y] & (1 << x));
+                    bool is_block = (obstacles.data[y] & (1 << x));
+                    
+                    if (is_block) { f << "B "; }
+                    else if (is_cell) { f << "C "; }
+                    else { f << ". "; }
                 }
                 f << "\n";
             }
@@ -128,3 +136,4 @@ namespace Dandelifeon {
     };
 
 }
+
