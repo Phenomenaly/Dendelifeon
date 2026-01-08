@@ -102,6 +102,54 @@ namespace Dandelifeon {
             y_out = sum_dist / count_structs;
         }
 
+        SimulationResult run(const Bitboard& start_board, const Bitboard& obstacles) const {
+            SimulationResult res;
+            res.initial_blocks = 0;
+            
+            for (int i = 1; i <= 25; ++i) res.initial_blocks += __popcnt(start_board.data[i]);
+
+            Bitboard buffer, curr_b = start_board;
+            Bitboard* curr = &curr_b, * nxt = &buffer;
+            uint32_t center_mask = (1 << 11) | (1 << 12) | (1 << 13);
+
+            double best_proximity = 0;
+
+            for (int t = 1; t <= max_ticks; ++t) {
+                nxt->clear();
+                step_avx2(*curr, obstacles, *nxt);
+
+                uint32_t hits = ((*nxt)[12] | (*nxt)[13] | (*nxt)[14]) & center_mask;
+                if (hits) {
+                    int cells = __popcnt((*nxt)[12] & center_mask) + __popcnt((*nxt)[13] & center_mask) + __popcnt((*nxt)[14] & center_mask);
+                    
+                    res.mana = (std::min)(mana_cap, (long)cells * t * mana_per_gen);
+                    res.ticks = t;
+                    res.success = true;
+
+                    // More then 4 blocks have way more value
+                    double multiplier = 0.5;
+                    if (cells > 3) multiplier = 1.0;
+                    if (cells > 4) multiplier = 2.0;
+
+                    res.fitness = (double)res.mana * multiplier + t * 50;
+                    
+                    return res;
+                }
+
+                for (int y = 1; y <= 25; ++y) {
+                    if ((*nxt)[y]) {
+                        double dist_score = 25.0 - std::abs(y - 13);
+                        best_proximity = (std::max)(best_proximity, dist_score + (t * 0.1));
+                    }
+                }
+
+                std::swap(curr, nxt);
+                if (curr->isEmpty()) break;
+            }
+            res.fitness = best_proximity;
+            return res;
+        }
+
         SimulationResult run(const Bitboard& start_board, const Bitboard& obstacles, Bitboard& out_footprint) const {
             SimulationResult res;
             res.initial_blocks = 0;
@@ -155,6 +203,7 @@ namespace Dandelifeon {
         }
     };
 }
+
 
 
 
