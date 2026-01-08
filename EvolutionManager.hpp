@@ -77,6 +77,12 @@ namespace Dandelifeon {
                 }
             }
             break;
+                
+            case 6: // Symmetry
+            {
+                gen.symmetric = !gen.symmetric;
+            }
+            break;
             }
 
             if (gen.organCount < 2) forceAddStructure(gen, rng);
@@ -94,4 +100,5 @@ namespace Dandelifeon {
             gen.organs[gen.organCount++] = new_org;
         }
     };
+
 }
