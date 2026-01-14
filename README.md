@@ -1,30 +1,31 @@
-# Dandelifeon Optimizer
+# Dandelifeon Solver
 
-A C++ implementation of a genetic algorithm designed to maximize mana generation for the Dandelifeon flower (Botania mod). The solver focuses on finding optimal Game of Life patterns within a 25x25 bounded grid.
+A C++ solver designed to find optimal Game of Life patterns for the Dandelifeon flower (from the Botania mod for the Minecraft). The project utilizes **AVX2 intrinsics** and a **MAP-Elites** evolutionary algorithm to discover configurations that maximize mana generation efficiency within a constrained 25x25 grid.
 
-## Technical Implementation
+### 1. Simulation Engine (`DandelifeonEngine`)
+The core simulation is built on bitwise parallelism using **AVX2 (256-bit SIMD)** instructions.
+*   **Data Structure:** The 25x25 grid is mapped to a `uint32_t` array, allowing simultaneous processing of row neighbors.
+*   The engine processes two distinct bitboards:
+    *   **Life Layer** - is standard Conway's Game of Life automaton.
+    *   **Obstacle Layer** - is static bitmask that eliminates any overlapping life cells each tick.
 
-### Core Engine
-The simulation logic uses **AVX2 intrinsics** to perform bitwise operations on the grid state. The board is represented as bitmasks, allowing the engine to calculate generations using SIMD instructions without conditional branching overhead.
+### 2. Evolutionary Algorithm (MAP-Elites)
+Instead of a single objective optimization, the solver uses a Quality Diversity (QD) algorithm known as **MAP-Elites**. 
+In **Archive** I store 20x20 best-performing genomes found so far.
 
-### Optimization Strategy
-Unlike previous iterations that enforced global symmetry, this version allows for **global asymmetry**. The algorithm prioritizes local substructures that may be symmetric, but places them freely on the board to maximize efficiency.
+* **Phenotype X:** Pattern Density (Compactness). It was necessary for the asymmetric pattern to determine whether it is better to use distant or close structures.
 
-### Diversity Control (2D Leaderboard)
-To avoid local optima convergence, the population is sorted into a two-dimensional lookup table based on:
-1.  **X-Axis:** Cell Density (Compactness of the pattern).
-2.  **Y-Axis:** Distance from Center (Average Manhattan distance of cells from the 3x3 absorption zone).
+* **Phenotype Y:** Average Distance from Center. Sometimes successful patterns circle around the center and only reach it at the end.
 
-**Multithreading Logic:** Each thread is assigned a unique evolutionary vector, targeting specific regions of the density/distance map. This ensures simultaneous exploration of both dense clusters and sparse, long-range patterns.
+In fact, on average, the winner comes from any square on this map, meaning the values ​​are incorrect. The measurements I chose were based on the fact that I can't take values ​​related to the resulting mana or the number of squares involved, since I'm looking for the maximum/minimum in these measurements a priori.
 
-### Mutations
-The genetic algorithm modifies candidates using the following operations:
-*   **Shift Field:** Translates the entire active grid.
-*   **Shift Structure:** Identifies and moves connected components (islands) independently.
-*   **Shift Cell:** Moves individual active bits.
-*   **Mirror Structure:** Reflects a connected component locally (does not affect the rest of the board).
-*   **Delete Cell:** Toggles an active bit to zero.
 
+### 3. Mutation Strategy
+The `EvolutionManager` applies mutations based on adaptive weights.
+*   **Positional mutations** Shift board, shift structure, shift individual cell.
+*   **Topology mutations** Mirror structure, rotate structure, toggle global symmetry.
+*   **Composition mutations** add/remove life cells or add/reemove walls.
+*   **"Smart Wall" mutation** The engine tracks the "footprint" of life over the entire simulation. A specialized mutation places obstacles specifically on coordinates with high historical activity to redirect flow.
 ---
 
 ## Dandelifeon Constraints
@@ -47,6 +48,7 @@ Configure the search parameters in `main.cpp` via `startCustomOptimization`:
 | `manaCap` | Dandelifeon internal buffer limit (Default: 50000) |
 | `threads` | Automatically scales to utilize available CPU cores |
 
+In the current commit I was looking for a solution for the changed rules of new versions (1.20+)
 ---
 ## Curent best pattern for the classic rules:
 <details>
