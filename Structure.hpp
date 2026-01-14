@@ -10,9 +10,10 @@ namespace Dandelifeon {
         int8_t x, y;
         RelativePoint cells[10];
         int8_t count = 0;
+
         bool isObstacle = false;
 
-        Structure() : x(12), y(12), count(0) {}
+        Structure() : x(12), y(12), count(0), isObstacle(false) {}
 
         void addPoint(int8_t dx, int8_t dy) {
             if (count < 10) 
@@ -21,11 +22,9 @@ namespace Dandelifeon {
 
         void mirrorLocal(bool axisX, bool axisY) {
             for (int i = 0; i < count; ++i) {
-                if (axisX) 
-                    cells[i].dx = -cells[i].dx;
+                if (axisX) cells[i].dx = -cells[i].dx;
 
-                if (axisY) 
-                    cells[i].dy = -cells[i].dy;
+                if (axisY) cells[i].dy = -cells[i].dy;
             }
         }
 
@@ -37,5 +36,4 @@ namespace Dandelifeon {
             }
         }
     };
-
 }

@@ -16,10 +16,24 @@ namespace Dandelifeon {
         void clear() { std::memset(data, 0, sizeof(data)); }
 
         bool isEmpty() const {
-            for (int i = 1; i <= 25; ++i) if (data[i]) 
-                return false;
-
+            for (int i = 1; i <= 25; ++i) if (data[i]) return false;
             return true;
+        }
+
+        // Подсчет живых клеток
+        int popcount() const {
+            int c = 0;
+            for (int i = 1; i <= 25; ++i) c += __popcnt(data[i]);
+            return c;
+        }
+
+        // Битовые операции для удобства
+        void merge(const Bitboard& other) {
+            for (int i = 1; i <= 25; ++i) data[i] |= other.data[i];
+        }
+
+        void applyObstacles(const Bitboard& obstacles) {
+            for (int i = 1; i <= 25; ++i) data[i] &= ~obstacles.data[i];
         }
 
         uint32_t& operator[](size_t i) { return data[i]; }
@@ -31,9 +45,13 @@ namespace Dandelifeon {
         double fitness = 0;
         int ticks = 0;
         int initial_blocks = 0;
+
         double pheno_x = 0;
         double pheno_y = 0;
+        
         bool success = false;
+        
+        Bitboard history;
     };
 
     class Engine {
@@ -47,21 +65,18 @@ namespace Dandelifeon {
         }
 
         // Pure black magic of bitwise operations and overtaking several lines at once
-        inline void step_avx2(const Bitboard& current, const Bitboard& obstacles, Bitboard& next) const {
+        inline void step_avx2(const Bitboard& current, Bitboard& next, const Bitboard& obstacles) const {
             for (int i = 1; i <= 25; i += 8) {
                 __m256i mid = _mm256_loadu_si256((const __m256i*) & current.data[i]);
                 __m256i top = _mm256_loadu_si256((const __m256i*) & current.data[i - 1]);
                 __m256i bot = _mm256_loadu_si256((const __m256i*) & current.data[i + 1]);
 
-                __m256i n1 = _mm256_slli_epi32(top, 1);  
-                __m256i n2 = top; __m256i n3 = _mm256_srli_epi32(top, 1);
-                __m256i n4 = _mm256_slli_epi32(mid, 1);                   
-                __m256i n5 = _mm256_srli_epi32(mid, 1);
-                __m256i n6 = _mm256_slli_epi32(bot, 1);  
-                __m256i n7 = bot; __m256i n8 = _mm256_srli_epi32(bot, 1);
+                __m256i n1 = _mm256_slli_epi32(top, 1);  __m256i n2 = top;  __m256i n3 = _mm256_srli_epi32(top, 1);
+                __m256i n4 = _mm256_slli_epi32(mid, 1);                     __m256i n5 = _mm256_srli_epi32(mid, 1);
+                __m256i n6 = _mm256_slli_epi32(bot, 1);  __m256i n7 = bot;  __m256i n8 = _mm256_srli_epi32(bot, 1);
+
 
                 __m256i s0 = _mm256_setzero_si256(), s1 = _mm256_setzero_si256(), s2 = _mm256_setzero_si256();
-
                 auto add = [&](__m256i x) {
                     __m256i c0 = _mm256_and_si256(s0, x); s0 = _mm256_xor_si256(s0, x);
                     __m256i c1 = _mm256_and_si256(s1, c0); s1 = _mm256_xor_si256(s1, c0); s2 = _mm256_or_si256(s2, c1);
@@ -69,11 +84,13 @@ namespace Dandelifeon {
 
                 add(n1); add(n2); add(n3); add(n4); add(n5); add(n6); add(n7); add(n8);
 
+
                 __m256i res = _mm256_and_si256(_mm256_andnot_si256(s2, s1), _mm256_or_si256(s0, mid));
 
-                __m256i obs = _mm256_loadu_si256((const __m256i*) & obstacles.data[i]);
-                res = _mm256_andnot_si256(obs, res);
-                
+                // Added wall support
+                __m256i obs_mask = _mm256_loadu_si256((const __m256i*) & obstacles.data[i]);
+                res = _mm256_andnot_si256(obs_mask, res);
+
                 _mm256_storeu_si256((__m256i*) & next.data[i], _mm256_and_si256(res, row_mask));
             }
         }
@@ -104,38 +121,43 @@ namespace Dandelifeon {
 
         SimulationResult run(const Bitboard& start_board, const Bitboard& obstacles) const {
             SimulationResult res;
-            res.initial_blocks = 0;
-            
-            for (int i = 1; i <= 25; ++i) res.initial_blocks += __popcnt(start_board.data[i]);
+            res.history.clear();
 
-            Bitboard buffer, curr_b = start_board;
+
+            Bitboard curr_b = start_board;
+            curr_b.applyObstacles(obstacles);
+
+            res.initial_blocks = curr_b.popcount();
+
+            Bitboard buffer;
             Bitboard* curr = &curr_b, * nxt = &buffer;
-            uint32_t center_mask = (1 << 11) | (1 << 12) | (1 << 13);
 
+            uint32_t center_mask = (1 << 11) | (1 << 12) | (1 << 13);
             double best_proximity = 0;
 
             for (int t = 1; t <= max_ticks; ++t) {
+                // Footprint for living cells
+                res.history.merge(*curr);
+
                 nxt->clear();
-                step_avx2(*curr, obstacles, *nxt);
+                step_avx2(*curr, *nxt, obstacles);
 
                 uint32_t hits = ((*nxt)[12] | (*nxt)[13] | (*nxt)[14]) & center_mask;
                 if (hits) {
                     int cells = __popcnt((*nxt)[12] & center_mask) + __popcnt((*nxt)[13] & center_mask) + __popcnt((*nxt)[14] & center_mask);
-                    
+
                     res.mana = (std::min)(mana_cap, (long)cells * t * mana_per_gen);
                     res.ticks = t;
                     res.success = true;
-
-                    // More then 4 blocks have way more value
-                    double multiplier = 0.5;
-                    if (cells > 3) multiplier = 1.0;
-                    if (cells > 4) multiplier = 2.0;
-
-                    res.fitness = (double)res.mana * multiplier + t * 50;
                     
+                    // insted search best result for Mana we can also search the efficiency of its production
+                    double blocks = (res.initial_blocks > 0) ? (double)res.initial_blocks : 1.0;
+                    res.fitness = (double)res.mana / blocks;
+
                     return res;
                 }
 
+                // Wall can help achive center but dont count on it
                 for (int y = 1; y <= 25; ++y) {
                     if ((*nxt)[y]) {
                         double dist_score = 25.0 - std::abs(y - 13);
@@ -146,64 +168,9 @@ namespace Dandelifeon {
                 std::swap(curr, nxt);
                 if (curr->isEmpty()) break;
             }
-            res.fitness = best_proximity;
-            return res;
-        }
 
-        SimulationResult run(const Bitboard& start_board, const Bitboard& obstacles, Bitboard& out_footprint) const {
-            SimulationResult res;
-            res.initial_blocks = 0;
-            out_footprint.clear();
-            
-            for (int i = 1; i <= 25; ++i) 
-                res.initial_blocks += __popcnt(start_board.data[i]);
-
-            Bitboard buffer, curr_b = start_board;
-            Bitboard* curr = &curr_b, * nxt = &buffer;
-            uint32_t center_mask = (1 << 11) | (1 << 12) | (1 << 13);
-
-            double best_proximity = 0;
-
-            for (int t = 1; t <= max_ticks; ++t) {
-                nxt->clear();
-                step_avx2(*curr, obstacles, *nxt);
-
-                uint32_t hits = ((*nxt)[12] | (*nxt)[13] | (*nxt)[14]) & center_mask;
-                if (hits) {
-                    int cells = __popcnt((*nxt)[12] & center_mask) + __popcnt((*nxt)[13] & center_mask) + __popcnt((*nxt)[14] & center_mask);
-                    
-                    res.mana = (std::min)(mana_cap, (long)cells * t * mana_per_gen);
-                    res.ticks = t;
-                    res.success = true;
-
-                    // More then 4 blocks have way more value
-                    double multiplier = 0.5;
-                    if (cells > 3) multiplier = 1.0;
-                    if (cells > 4) multiplier = 2.0;
-
-                    res.fitness = (double)res.mana * multiplier + t * 50;
-                    
-                    return res;
-                }
-
-                for (int y = 1; y <= 25; ++y) {
-                    if ((*nxt)[y]) {
-                        double dist_score = 25.0 - std::abs(y - 13);
-                        best_proximity = (std::max)(best_proximity, dist_score + (t * 0.1));
-                    }
-
-                    out_footprint.data[k] |= nxt->data[k];
-                }
-
-                std::swap(curr, nxt);
-                if (curr->isEmpty()) break;
-            }
-            res.fitness = best_proximity;
+            res.fitness = 0;
             return res;
         }
     };
 }
-
-
-
-

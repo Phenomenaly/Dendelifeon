@@ -14,7 +14,7 @@ int main() {
     SetConsoleMode(hOut, dwMode);
 #endif
 
-    int num_threads = 8; // Number of logical cores - 1
+    int num_threads = 7; // Number of logical cores
     Dandelifeon::Archive archive;
     Dandelifeon::Engine engine(100, 60, 50000);
     Dandelifeon::Leaderboard ui(num_threads);
@@ -46,5 +46,4 @@ int main() {
     }
 
     return 0;
-
 }
